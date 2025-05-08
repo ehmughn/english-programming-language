@@ -1,0 +1,149 @@
+/* General body styling */
+body {
+  font-family: monospace;
+  margin: 0;
+  padding: 0;
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* Editor container */
+#editorContainer {
+  display: flex;
+  border: 1px solid #333;
+  background: #1e1e1e;
+  font-size: 16px;
+  overflow: hidden;
+  flex-grow: 1;
+  position: relative; /* For positioning autocomplete */
+}
+
+/* Line numbers */
+#lineNumbers {
+  font-family: monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre;
+  text-align: right;
+  margin-top: 5px;
+  padding: 10px;
+  border-right: 1px solid #333;
+  background-color: #252526;
+  color: #858585;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* Text area */
+#input {
+  font-family: monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  border: none;
+  outline: none;
+  resize: none;
+  width: 100%;
+  padding: 10px;
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+  box-sizing: border-box;
+  overflow: auto;
+  caret-color: #ffffff;
+}
+
+/* Error line highlighting */
+.line-error {
+  background-color: rgba(255, 0, 0, 0.2);
+}
+
+/* Controls container */
+#controls {
+  margin: 10px;
+  display: flex;
+  gap: 10px;
+}
+
+/* Buttons */
+#runBtn, #undoBtn, #redoBtn {
+  padding: 10px 20px;
+  font-size: 16px;
+  background-color: #007acc;
+  color: #ffffff;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+#runBtn:hover, #undoBtn:hover, #redoBtn:hover {
+  background-color: #005f99;
+}
+
+#undoBtn:disabled, #redoBtn:disabled {
+  background-color: #444;
+  cursor: not-allowed;
+}
+
+/* Output area */
+#output {
+  margin: 10px;
+  padding: 10px;
+  background: #252526;
+  border: 1px solid #333;
+  color: #d4d4d4;
+  font-family: monospace;
+  min-height: 100px;
+  overflow: auto;
+}
+
+/* Autocomplete suggestions */
+.autocomplete-suggestions {
+  position: absolute;
+  background: #252526;
+  border: 1px solid #333;
+  max-height: 150px;
+  overflow-y: auto;
+  z-index: 1000;
+  display: none;
+  color: #d4d4d4;
+  font-family: monospace;
+  font-size: 14px;
+}
+
+.autocomplete-suggestions div {
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
+.autocomplete-suggestions div:hover,
+.autocomplete-suggestions div.selected {
+  background: #007acc;
+}
+
+/* Prism custom language token styles */
+.token.comment {
+  color: #6b7280; /* Slate gray for comments, muted and readable */
+}
+.token.string {
+  color: #f4a261; /* Warm peach for strings, distinct and vibrant */
+}
+.token.keyword {
+  color: #c792ea; /* Soft purple for keywords, bold and standout */
+}
+.token.type {
+  color: #4ec9b0; /* Teal for types, calm and distinct (retained from original) */
+}
+.token.operator {
+  color: #abb2bf; /* Light gray for operators, neutral and clear */
+}
+.token.variable {
+  color: #61afef; /* Bright blue for variables, highly readable */
+}
+.token.number {
+  color: #98c379; /* Green for numbers, vibrant and distinct */
+}
+.token.punctuation {
+  color: #5c6370; /* Darker gray for punctuation, subtle and non-distracting */
+}

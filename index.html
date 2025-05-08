@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Custom Code Editor</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+</head>
+<body>
+  <div id="editorContainer">
+    <div id="lineNumbers"></div>
+    <pre id="input" contenteditable="true" spellcheck="false" class="language-custom-lang"></pre>
+    <div id="autocomplete" class="autocomplete-suggestions"></div>
+  </div>
+
+  <div id="controls">
+    <button id="undoBtn">Undo</button>
+    <button id="redoBtn">Redo</button>
+    <button id="runBtn">Run</button>
+  </div>
+
+  <pre id="output"></pre>
+
+  <script src="script.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="prism-custom-lang.js"></script>
+</body>
+</html>
