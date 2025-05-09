@@ -8,7 +8,7 @@ Prism.languages['custom-lang'] = {
       greedy: true
     },
     'keyword': {
-      pattern: /\b(create a variable with the name of|with the type of|with the value of|change the value of|to|display|when|otherwise when|otherwise|increment the|decrement the|loop until|loop beginning with|that is updated incrementally|that is updated decrementally|and ending when|is equal to|is not equal to|is greater than or equal to|is less than or equal to|is greater than|is less than|and|or|not|True|False)\b/,
+      pattern: /\b(Create a variable with the name of|with the type of|with the value of|Change the value of|to|Display|When|Otherwise when|Otherwise|Increment the|Decrement the|Loop until|Loop beginning with|that is updated incrementally|that is updated decrementally|and ending when|is equal to|is not equal to|is greater than or equal to|is less than or equal to|is greater than|is less than|and|or|not|True|False)\b/,
       greedy: true
     },
     'type': {

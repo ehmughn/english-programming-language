@@ -12,15 +12,15 @@ let isProgrammaticChange = false;
 
 // Autocomplete state
 const keywords = [
-    "create a variable with the name of",
+    "Create a variable with the name of",
     "with the type of",
     "with the value of",
-    "change the value of",
+    "Change the value of",
     "to",
-    "display(\"\")",
-    "when {}",
-    "otherwise {}",
-    "otherwise when {}",
+    "Display(\"\")",
+    "When {}",
+    "Otherwise {}",
+    "Otherwise when {}",
     "True",
     "False",
     "int",
@@ -35,10 +35,10 @@ const keywords = [
     "and",
     "or",
     "not",
-    "loop until {}",
-    "loop beginning with x with the value of 0 that is updated incrementally and ending when x is less than 10 {}", // Updated to 'and ending when'
-    "increment the", // Added for new statement
-    "decrement the"  // Added for new statement
+    "Loop until {}",
+    "Loop beginning with x with the value of 0 that is updated incrementally and ending when x is less than 10 {}", // Updated to 'and ending when'
+    "Increment the", // Added for new statement
+    "Decrement the"  // Added for new statement
 ];
 let autocompleteSuggestions = [];
 let selectedSuggestionIndex = -1;
@@ -50,21 +50,41 @@ let errorLine = null;
 let globalContext = {};
 
 // NEW: Preprocess lines to normalize capitalization, periods, and 'and ending when'
-function preprocessLines(rawLines) {
-    return rawLines.map((line, index) => {
-        const trimmed = line.trim();
-        if (trimmed === "" || trimmed.startsWith("//")) return line;
-        if (trimmed === "{" || trimmed === "}") return line;
-        // Capitalize first character
-        let normalized = trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
-        // Ensure trailing period for non-bracket lines
-        if (!normalized.endsWith(".") && !normalized.endsWith("{") && !normalized.endsWith("}")) {
-            normalized += ".";
-        }
-        // Replace 'and ending with' with 'and ending when' for for loops
-        normalized = normalized.replace(/and ending with/i, "and ending when");
-        return normalized;
+function preprocessLines(lines) {
+    const normalized = lines.map((line, index) => {
+        console.log(`preprocessLines: Line ${index + 1} original: "${line}"`);
+        // Assuming preprocessLines preserves original line; replace with actual logic
+        const normalizedLine = line; // Adjust based on your preprocessLines
+        console.log(`preprocessLines: Line ${index + 1} normalized: "${normalizedLine}"`);
+        return normalizedLine;
     });
+    return normalized;
+}
+
+function validateLineSyntax(line, lineNumber) {
+    const trimmed = line.trim();
+    console.log(`validateLineSyntax: Checking line ${lineNumber}: "${trimmed}"`);
+
+    // Skip empty lines, comments, and block delimiters
+    if (trimmed === "" || trimmed.startsWith("//") || trimmed === "{" || trimmed === "}") {
+        return;
+    }
+
+    // Check for capital letter at start
+    if (!/^[A-Z]/.test(trimmed)) {
+        throw new Error(`Line must start with a capital letter (line ${lineNumber})`);
+    }
+
+    // Check for period at end, except for block-starting lines
+    if (!trimmed.startsWith("When ") &&
+        !trimmed.startsWith("Otherwise when ") &&
+        !trimmed.startsWith("Otherwise {") &&
+        !trimmed.startsWith("Loop until ") &&
+        !trimmed.startsWith("Loop beginning with ")) {
+        if (!trimmed.endsWith(".")) {
+            throw new Error(`Line must end with a period (line ${lineNumber})`);
+        }
+    }
 }
 
 function replaceEnglishLogicalExpressions(input) {
@@ -226,9 +246,15 @@ function showAutocomplete() {
         autocompleteEl.style.display = "none";
         return;
     }
+
+    // Calculate the position of the caret
     const rect = range.getBoundingClientRect();
-    autocompleteEl.style.left = `${rect.left}px`;
-    autocompleteEl.style.top = `${rect.bottom + window.scrollY}px`;
+    const containerRect = inputEl.getBoundingClientRect();
+    const offset = 15; // Add a slight offset to move the dropdown down
+    autocompleteEl.style.left = `${rect.left - containerRect.left + inputEl.scrollLeft}px`;
+    autocompleteEl.style.top = `${rect.bottom - containerRect.top + inputEl.scrollTop + offset}px`; // Add offset here
+
+    // Populate and display the autocomplete suggestions
     autocompleteEl.innerHTML = autocompleteSuggestions
         .map((suggestion, index) =>
             `<div class="${index === selectedSuggestionIndex ? 'selected' : ''}">${suggestion}</div>`
@@ -383,18 +409,27 @@ inputEl.addEventListener("keydown", (event) => {
         return;
     }
     if (event.key === "Tab") {
+    event.preventDefault();
+    const selection = window.getSelection();
+    if (!selection.rangeCount) return;
+    const range = selection.getRangeAt(0);
+    const caretPosition = saveCaretPosition(inputEl);
+    const tabCharacter = document.createTextNode("    ");
+    range.deleteContents();
+    range.insertNode(tabCharacter);
+    // Update history and DOM
+    updateHistory();
+    markLines();
+    updateLineNumbers();
+    // Restore caret position after the inserted spaces
+    restoreCaretPosition(inputEl, caretPosition + 4);
+    showAutocomplete();
+    return;
+}
+    if (event.key === "Escape" && autocompleteEl.style.display === "block") {
         event.preventDefault();
-        const selection = window.getSelection();
-        const range = selection.getRangeAt(0);
-        const tabCharacter = document.createTextNode("    ");
-        range.insertNode(tabCharacter);
-        range.setStartAfter(tabCharacter);
-        range.setEndAfter(tabCharacter);
-        selection.removeAllRanges();
-        selection.addRange(range);
-        updateHistory();
-        markLines();
-        updateLineNumbers();
+        autocompleteEl.style.display = "none";
+        selectedSuggestionIndex = -1;
         return;
     }
     const openingChars = {
@@ -463,7 +498,7 @@ autocompleteEl.addEventListener("click", (event) => {
 document.getElementById("runBtn").addEventListener("click", () => {
     const input = inputEl.textContent;
     const lines = input.split("\n");
-    const normalizedLines = preprocessLines(lines); // NEW: Preprocess lines
+    const normalizedLines = preprocessLines(lines);
     globalContext = {}; // Reset global context
     const result = [];
     outputEl.innerHTML = "";
@@ -533,63 +568,57 @@ document.getElementById("runBtn").addEventListener("click", () => {
     };
 
     function parseBlock(lines, startIndex) {
-        const block = [];
-        let braceCount = 0;
-        let i = startIndex;
-        let inNestedBlock = false;
-        let nestedBlockEnd = -1;
+    const block = [];
+    let braceCount = 0;
+    let i = startIndex;
 
-        if (lines[startIndex].includes("{")) {
-            braceCount = 1;
-            i++;
-        } else {
-            throw new Error(`Expected '{' at line ${startIndex + 1}`);
-        }
-
-        while (i < lines.length && braceCount > 0) {
-            const line = lines[i].trim();
-            if (line === "") {
-                i++;
-                continue;
-            }
-
-            if (line.startsWith("Loop beginning with ") || line.startsWith("Loop until ") || line.startsWith("When ")) {
-                if (braceCount === 1) {
-                    inNestedBlock = true;
-                    const { nextIndex } = parseBlock(lines, i);
-                    nestedBlockEnd = nextIndex;
-                    block.push({ line: lines[i], index: i });
-                    i = nextIndex;
-                    inNestedBlock = false;
-                    continue;
-                }
-            }
-
-            if (inNestedBlock) {
-                i++;
-                if (i >= nestedBlockEnd) {
-                    inNestedBlock = false;
-                }
-                continue;
-            }
-
-            if (line.includes("{")) braceCount++;
-            if (line.includes("}")) braceCount--;
-
-            if (braceCount > 0 || (braceCount === 0 && !line.includes("}"))) {
-                block.push({ line: lines[i], index: i });
-            }
-
-            i++;
-        }
-
-        if (braceCount !== 0) {
-            throw new Error(`Unmatched braces starting at line ${startIndex + 1}`);
-        }
-
-        console.log(`parseBlock from line ${startIndex + 1} returns block: ${block.map(b => `Line ${b.index + 1}: ${b.line.trim()}`).join(", ")}, nextIndex: ${i}`);
-        return { block, nextIndex: i };
+    if (lines[startIndex].trim().includes("{")) {
+        braceCount = 1;
+        i++;
+    } else {
+        throw new Error(`Expected '{' at line ${startIndex + 1}`);
     }
+
+    while (i < lines.length && braceCount > 0) {
+        const line = lines[i].trim();
+        if (line === "") {
+            i++;
+            continue;
+        }
+
+        // Detect start of a nested control structure
+        if (line.startsWith("When ") || line.startsWith("Loop until ") || line.startsWith("Loop beginning with ")) {
+            // Parse the nested block recursively
+            const { block: nestedBlock, nextIndex } = parseBlock(lines, i);
+            block.push({ line: lines[i], index: i }); // Include the control structure's opening line
+            i = nextIndex; // Skip to the end of the nested block, including any Otherwise clauses
+            // Check for Otherwise or Otherwise when clauses following the nested block
+            while (i < lines.length && (lines[i].trim().startsWith("Otherwise {") || lines[i].trim().startsWith("Otherwise when "))) {
+                const { block: subsequentBlock, nextIndex: subsequentNextIndex } = parseBlock(lines, i);
+                i = subsequentNextIndex; // Skip the Otherwise block
+            }
+            continue;
+        }
+
+        // Handle brace counting
+        if (line.includes("{")) braceCount++;
+        if (line.includes("}")) braceCount--;
+
+        // Add line to block if not part of a nested block's content
+        if (braceCount > 0 || (braceCount === 0 && !line.includes("}"))) {
+            block.push({ line: lines[i], index: i });
+        }
+
+        i++;
+    }
+
+    if (braceCount !== 0) {
+        throw new Error(`Unmatched braces starting at line ${startIndex + 1}`);
+    }
+
+    console.log(`parseBlock from line ${startIndex + 1} returns block: ${block.map(b => `Line ${b.index + 1}: ${b.line.trim()}`).join(", ")}, nextIndex: ${i}`);
+    return { block, nextIndex: i };
+}
 
     function validateType(value, declaredType, lineNumber) {
         const actualType = convertFuncs.type(value);
@@ -632,6 +661,24 @@ document.getElementById("runBtn").addEventListener("click", () => {
     function evalSingleLine(line, lineNumber, evalContext) {
         const trimmed = line.trim();
         if (trimmed === "" || trimmed.startsWith("//") || trimmed === "}") return;
+         
+         
+        // Validate capital letter and period for non-block-delimiter lines
+        if (trimmed !== "{") {
+            if (!/^[A-Z]/.test(trimmed)) {
+                throw new Error(`Line must start with a capital letter (line ${lineNumber})`);
+            }
+            // Skip period check for block-starting lines
+            if (!trimmed.startsWith("When ") &&
+                !trimmed.startsWith("Otherwise when ") &&
+                !trimmed.startsWith("Otherwise {") &&
+                !trimmed.startsWith("Loop until ") &&
+                !trimmed.startsWith("Loop beginning with ")) {
+                if (!trimmed.endsWith(".")) {
+                    throw new Error(`Line must end with a period (line ${lineNumber})`);
+                }
+            }
+        }
 
         // MODIFIED: Expect trailing period for display
         if (/^\s*Display\(/.test(trimmed)) {
@@ -658,12 +705,13 @@ document.getElementById("runBtn").addEventListener("click", () => {
             return;
         }
 
-        if (/^Create a variable with the name of\s+\w+\s+with the type of\s+(int|string|boolean)$/.test(trimmed)) {
+        if (/^Create a variable with the name of\s+\w+\s+with the type of\s+(int|string|boolean)\.$/.test(trimmed)) {
             const match = trimmed.match(/^Create a variable with the name of\s+(\w+)\s+with the type of\s+(int|string|boolean)\.$/);
             if (!match) throw new Error(`Invalid typed declaration syntax (line ${lineNumber})`);
             const varName = match[1];
             const declaredType = match[2];
             evalContext[varName] = { value: undefined, type: declaredType };
+            console.log(`Declared ${varName} with type ${declaredType}, value: undefined`);
             return;
         }
 
@@ -791,25 +839,80 @@ document.getElementById("runBtn").addEventListener("click", () => {
         }
 
         if (trimmed.startsWith("When ")) {
-            const conditionMatch = trimmed.match(/^When\s+(.*)\s*\{$/);
-            if (!conditionMatch) throw new Error(`Invalid when statement syntax (line ${lineNumber})`);
-            const condition = conditionMatch[1];
-            const conditionResult = evaluateExpression(condition, evalContext);
-            console.log(`evalSingleLine: Evaluating when condition at line ${lineNumber}: ${condition} = ${conditionResult}`);
-            if (typeof conditionResult !== "boolean") {
-                throw new Error(`Condition must evaluate to boolean (line ${lineNumber})`);
+    const conditionMatch = trimmed.match(/^When\s+(.*)\s*\{$/);
+    if (!conditionMatch) throw new Error(`Invalid when statement syntax (line ${lineNumber})`);
+    const condition = conditionMatch[1];
+    const { block: whenBlock, nextIndex } = parseBlock(normalizedLines, lineNumber - 1);
+    console.log(`evalSingleLine: Processing When at line ${lineNumber}, condition: ${condition}, block: ${whenBlock.map(b => b.line.trim()).join(", ")}, nextIndex: ${nextIndex}`);
+    
+    // Evaluate the When condition
+    const conditionResult = evaluateExpression(condition, evalContext);
+    console.log(`evalSingleLine: When condition at line ${lineNumber}: ${condition} = ${conditionResult}`);
+    if (typeof conditionResult !== "boolean") {
+        throw new Error(`Condition must evaluate to boolean (line ${lineNumber})`);
+    }
+
+    let executedBlock = false;
+    let currentIndex = lineNumber - 1;
+
+    // Execute the When block if condition is true
+    if (conditionResult) {
+        for (const { line: subLine, index: subIndex } of whenBlock) {
+            const trimmedLine = subLine.trim();
+            if (trimmedLine === "" || trimmedLine.startsWith("//")) continue;
+            console.log(`evalSingleLine: Executing when block line ${subIndex + 1}: ${trimmedLine}`);
+            evalSingleLine(subLine, subIndex + 1, evalContext);
+        }
+        executedBlock = true;
+    }
+
+    // Process chained Otherwise when or Otherwise blocks
+    currentIndex = nextIndex;
+    while (currentIndex < normalizedLines.length && !executedBlock) {
+        const currentLine = normalizedLines[currentIndex].trim();
+        console.log(`evalSingleLine: Checking line ${currentIndex + 1}: ${currentLine}`);
+        
+        if (currentLine.startsWith("Otherwise when ")) {
+            const otherwiseWhenMatch = currentLine.match(/^Otherwise when\s+(.*)\s*\{$/);
+            if (!otherwiseWhenMatch) throw new Error(`Invalid otherwise when syntax (line ${currentIndex + 1})`);
+            const otherwiseCondition = otherwiseWhenMatch[1];
+            const { block: otherwiseWhenBlock, nextIndex: nextInnerIndex } = parseBlock(normalizedLines, currentIndex);
+            console.log(`evalSingleLine: Processing Otherwise when at line ${currentIndex + 1}, condition: ${otherwiseCondition}, block: ${otherwiseWhenBlock.map(b => b.line.trim()).join(", ")}, nextIndex: ${nextInnerIndex}`);
+            
+            const otherwiseConditionResult = evaluateExpression(otherwiseCondition, evalContext);
+            console.log(`evalSingleLine: Otherwise when condition at line ${currentIndex + 1}: ${otherwiseCondition} = ${otherwiseConditionResult}`);
+            if (typeof otherwiseConditionResult !== "boolean") {
+                throw new Error(`Otherwise when condition must evaluate to boolean (line ${currentIndex + 1})`);
             }
-            if (conditionResult) {
-                const { block: whenBlock } = parseBlock(normalizedLines, lineNumber - 1);
-                for (const { line: subLine, index: subIndex } of whenBlock) {
+            if (otherwiseConditionResult) {
+                for (const { line: subLine, index: subIndex } of otherwiseWhenBlock) {
                     const trimmedLine = subLine.trim();
                     if (trimmedLine === "" || trimmedLine.startsWith("//")) continue;
-                    console.log(`evalSingleLine: Executing when block line ${subIndex + 1}: ${trimmedLine}`);
+                    console.log(`evalSingleLine: Executing Otherwise when block line ${subIndex + 1}: ${trimmedLine}`);
                     evalSingleLine(subLine, subIndex + 1, evalContext);
                 }
+                executedBlock = true;
             }
-            return;
+            currentIndex = nextInnerIndex;
+        } else if (currentLine.startsWith("Otherwise {")) {
+            const { block: otherwiseBlock, nextIndex: nextInnerIndex } = parseBlock(normalizedLines, currentIndex);
+            console.log(`evalSingleLine: Processing Otherwise at line ${currentIndex + 1}, block: ${otherwiseBlock.map(b => b.line.trim()).join(", ")}, nextIndex: ${nextInnerIndex}`);
+            
+            for (const { line: subLine, index: subIndex } of otherwiseBlock) {
+                const trimmedLine = subLine.trim();
+                if (trimmedLine === "" || trimmedLine.startsWith("//")) continue;
+                console.log(`evalSingleLine: Executing Otherwise block line ${subIndex + 1}: ${trimmedLine}`);
+                evalSingleLine(subLine, subIndex + 1, evalContext);
+            }
+            executedBlock = true;
+            currentIndex = nextInnerIndex;
+        } else {
+            break;
         }
+    }
+
+    return;
+}
 
         throw new Error(`Unknown syntax (line ${lineNumber})`);
     }
@@ -819,6 +922,120 @@ document.getElementById("runBtn").addEventListener("click", () => {
         const line = rawLine.trim();
         if (line === "" || line.startsWith("//")) continue;
         try {
+
+            validateLineSyntax(rawLine, i + 1);
+
+            if (line.startsWith("When ")) {
+    let executedBlock = false;
+    let currentIndex = i;
+
+    // Process the When block
+    const conditionMatch = line.match(/^When\s+(.*)\s*\{$/);
+    if (!conditionMatch) throw new Error(`Invalid when statement syntax (line ${i + 1})`);
+    const condition = conditionMatch[1];
+    const { block: whenBlock, nextIndex } = parseBlock(normalizedLines, i);
+    console.log(`Processing When at line ${i + 1}, condition: ${condition}, block: ${whenBlock.map(b => b.line.trim()).join(", ")}, nextIndex: ${nextIndex}`);
+    
+    try {
+        const conditionResult = evaluateExpression(condition, globalContext);
+        console.log(`When condition at line ${i + 1}: ${condition} = ${conditionResult}`);
+        if (typeof conditionResult !== "boolean") {
+            throw new Error(`Condition must evaluate to boolean (line ${i + 1})`);
+        }
+        if (conditionResult) {
+            for (const { line: subLine, index: subIndex } of whenBlock) {
+                const trimmedLine = subLine.trim();
+                if (trimmedLine === "" || trimmedLine.startsWith("//")) continue;
+                console.log(`Executing When block line ${subIndex + 1}: ${trimmedLine}`);
+                evalSingleLine(subLine, subIndex + 1, globalContext);
+            }
+            executedBlock = true;
+        }
+    } catch (e) {
+        result.push(`<br><span style="color:red">Error on line ${i + 1}: ${e.message}</span>`);
+        highlightErrorLine(i + 1);
+        outputEl.innerHTML = result.join("");
+        return;
+    }
+    currentIndex = nextIndex;
+
+    // Process chained Otherwise when and Otherwise blocks
+    while (currentIndex < normalizedLines.length && !executedBlock) {
+        const currentLine = normalizedLines[currentIndex].trim();
+        console.log(`Checking line ${currentIndex + 1}: ${currentLine}`);
+        if (currentLine.startsWith("Otherwise when ")) {
+            const otherwiseWhenMatch = currentLine.match(/^Otherwise when\s+(.*)\s*\{$/);
+            if (!otherwiseWhenMatch) throw new Error(`Invalid otherwise when syntax (line ${currentIndex + 1})`);
+            const otherwiseCondition = otherwiseWhenMatch[1];
+            const { block: otherwiseWhenBlock, nextIndex: nextInnerIndex } = parseBlock(normalizedLines, currentIndex);
+            console.log(`Processing Otherwise when at line ${currentIndex + 1}, condition: ${otherwiseCondition}, block: ${otherwiseWhenBlock.map(b => b.line.trim()).join(", ")}, nextIndex: ${nextInnerIndex}`);
+            
+            try {
+                const otherwiseConditionResult = evaluateExpression(otherwiseCondition, globalContext);
+                console.log(`Otherwise when condition at line ${currentIndex + 1}: ${otherwiseCondition} = ${otherwiseConditionResult}`);
+                if (typeof otherwiseConditionResult !== "boolean") {
+                    throw new Error(`Otherwise when condition must evaluate to boolean (line ${currentIndex + 1})`);
+                }
+                if (otherwiseConditionResult) {
+                    for (const { line: subLine, index: subIndex } of otherwiseWhenBlock) {
+                        const trimmedLine = subLine.trim();
+                        if (trimmedLine === "" || trimmedLine.startsWith("//")) continue;
+                        console.log(`Executing Otherwise when block line ${subIndex + 1}: ${trimmedLine}`);
+                        evalSingleLine(subLine, subIndex + 1, globalContext);
+                    }
+                    executedBlock = true;
+                }
+            } catch (e) {
+                result.push(`<br><span style="color:red">Error on line ${currentIndex + 1}: ${e.message}</span>`);
+                highlightErrorLine(currentIndex + 1);
+                outputEl.innerHTML = result.join("");
+                return;
+            }
+            currentIndex = nextInnerIndex;
+        } else if (currentLine.startsWith("Otherwise {")) {
+            const { block: otherwiseBlock, nextIndex: nextInnerIndex } = parseBlock(normalizedLines, currentIndex);
+            console.log(`Processing Otherwise at line ${currentIndex + 1}, block: ${otherwiseBlock.map(b => b.line.trim()).join(", ")}, nextIndex: ${nextInnerIndex}`);
+            
+            try {
+                for (const { line: subLine, index: subIndex } of otherwiseBlock) {
+                    const trimmedLine = subLine.trim();
+                    if (trimmedLine === "" || trimmedLine.startsWith("//")) continue;
+                    console.log(`Executing Otherwise block line ${subIndex + 1}: ${trimmedLine}`);
+                    evalSingleLine(subLine, subIndex + 1, globalContext);
+                }
+                executedBlock = true;
+            } catch (e) {
+                result.push(`<br><span style="color:red">Error on line ${currentIndex + 1}: ${e.message}</span>`);
+                highlightErrorLine(currentIndex + 1);
+                outputEl.innerHTML = result.join("");
+                return;
+            }
+            currentIndex = nextInnerIndex;
+        } else {
+            break;
+        }
+    }
+
+    // Skip remaining blocks if any were executed
+    if (executedBlock) {
+        while (currentIndex < normalizedLines.length) {
+            const currentLine = normalizedLines[currentIndex].trim();
+            console.log(`Checking line ${currentIndex + 1} for skip: ${currentLine}`);
+            if (currentLine.startsWith("Otherwise when ") || currentLine.startsWith("Otherwise {")) {
+                const { nextIndex: nextInnerIndex } = parseBlock(normalizedLines, currentIndex);
+                console.log(`Skipping block at line ${currentIndex + 1}, nextIndex: ${nextInnerIndex}`);
+                currentIndex = nextInnerIndex;
+            } else {
+                break;
+            }
+        }
+    }
+
+    console.log(`Skipping to line ${currentIndex + 1} after When/Otherwise structure`);
+    i = currentIndex - 1;
+    continue;
+}
+
             if (line.startsWith("Loop until ")) {
                 const untilMatch = line.match(/^Loop until\s+(.+)\s*\{$/);
                 if (!untilMatch) throw new Error(`Invalid loop until syntax (line ${i + 1})`);
@@ -849,7 +1066,6 @@ document.getElementById("runBtn").addEventListener("click", () => {
                 continue;
             }
 
-            // MODIFIED: Update for 'and ending when'
             if (line.startsWith("Loop beginning with ")) {
                 const forMatch = line.match(/^Loop beginning with\s+(\w+)\s+with the value of\s+(.+?)\s+that is updated\s+(incrementally|decrementally)\s+and ending when\s+(.+)\s*\{$/);
                 if (!forMatch) throw new Error(`Invalid loop beginning with syntax (line ${i + 1})`);
@@ -891,76 +1107,6 @@ document.getElementById("runBtn").addEventListener("click", () => {
                 continue;
             }
 
-            if (line.startsWith("When ")) {
-                const conditionMatch = line.match(/^When\s+(.*)\s*\{$/);
-                if (!conditionMatch) throw new Error(`Invalid when statement syntax (line ${i + 1})`);
-                const condition = conditionMatch[1];
-                const { block: whenBlock, nextIndex } = parseBlock(normalizedLines, i);
-                const conditionResult = evaluateExpression(condition, globalContext);
-                console.log(`Main loop: Evaluating when condition at line ${i + 1}: ${condition} = ${conditionResult}`);
-                if (typeof conditionResult !== "boolean") {
-                    throw new Error(`Condition must evaluate to boolean (line ${i + 1})`);
-                }
-                if (conditionResult) {
-                    for (const { line: subLine, index: subIndex } of whenBlock) {
-                        const trimmedLine = subLine.trim();
-                        if (trimmedLine === "" || trimmedLine.startsWith("//")) continue;
-                        if (trimmedLine.startsWith("When ")) {
-                            const { nextIndex: skipIndex } = parseBlock(normalizedLines, subIndex);
-                            console.log(`Main loop: Processing when header and skipping block from line ${subIndex + 1} to ${skipIndex}`);
-                            evalSingleLine(subLine, subIndex + 1, globalContext);
-                            for (let j = subIndex + 1; j < skipIndex; j++) {
-                                console.log(`Main loop: Skipping nested when line ${j + 1}: ${normalizedLines[j].trim()}`);
-                            }
-                            continue;
-                        }
-                        console.log(`Main loop: Executing when block line ${subIndex + 1}: ${trimmedLine}`);
-                        evalSingleLine(subLine, subIndex + 1, globalContext);
-                    }
-                }
-                let currentIndex = nextIndex;
-                let executedBlock = conditionResult;
-                while (currentIndex < normalizedLines.length && !executedBlock) {
-                    const currentLine = normalizedLines[currentIndex].trim();
-                    if (currentLine.startsWith("Otherwise when ")) {
-                        const otherwiseWhenMatch = currentLine.match(/^Otherwise when\s+(.*)\s*\{$/);
-                        if (!otherwiseWhenMatch) throw new Error(`Invalid otherwise when syntax (line ${currentIndex + 1})`);
-                        const otherwiseCondition = otherwiseWhenMatch[1];
-                        const { block: otherwiseWhenBlock, nextIndex: nextInnerIndex } = parseBlock(normalizedLines, currentIndex);
-                        const otherwiseConditionResult = evaluateExpression(otherwiseCondition, globalContext);
-                        console.log(`Main loop: Evaluating otherwise when condition at line ${currentIndex + 1}: ${otherwiseCondition} = ${otherwiseConditionResult}`);
-                        if (typeof otherwiseConditionResult !== "boolean") {
-                            throw new Error(`Otherwise when condition must evaluate to boolean (line ${currentIndex + 1})`);
-                        }
-                        if (otherwiseConditionResult) {
-                            for (const { line: subLine, index: subIndex } of otherwiseWhenBlock) {
-                                const trimmedLine = subLine.trim();
-                                if (trimmedLine === "" || trimmedLine.startsWith("//")) continue;
-                                console.log(`Main loop: Executing otherwise when block line ${subIndex + 1}: ${trimmedLine}`);
-                                evalSingleLine(subLine, subIndex + 1, globalContext);
-                            }
-                            executedBlock = true;
-                        }
-                        currentIndex = nextInnerIndex;
-                    } else if (currentLine.startsWith("Otherwise {")) {
-                        const { block: otherwiseBlock, nextIndex: nextInnerIndex } = parseBlock(normalizedLines, currentIndex);
-                        for (const { line: subLine, index: subIndex } of otherwiseBlock) {
-                            const trimmedLine = subLine.trim();
-                            if (trimmedLine === "" || trimmedLine.startsWith("//")) continue;
-                            console.log(`Main loop: Executing otherwise block line ${subIndex + 1}: ${trimmedLine}`);
-                            evalSingleLine(subLine, subIndex + 1, globalContext);
-                        }
-                        executedBlock = true;
-                        currentIndex = nextInnerIndex;
-                    } else {
-                        break;
-                    }
-                }
-                i = currentIndex - 1;
-                continue;
-            }
-
-            // NEW: Increment statement
             if (line.startsWith("Increment the ")) {
                 const match = line.match(/^Increment the\s+(\w+)\.$/);
                 if (!match) throw new Error(`Invalid Increment syntax (line ${i + 1})`);
@@ -974,7 +1120,6 @@ document.getElementById("runBtn").addEventListener("click", () => {
                 continue;
             }
 
-            // NEW: Decrement statement
             if (line.startsWith("Decrement the ")) {
                 const match = line.match(/^Decrement the\s+(\w+)\.$/);
                 if (!match) throw new Error(`Invalid Decrement syntax (line ${i + 1})`);

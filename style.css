@@ -1,6 +1,6 @@
 /* General body styling */
 body {
-  font-family: monospace;
+  font-family: 'Fira Code', monospace; /* Use a programming-friendly font */
   margin: 0;
   padding: 0;
   background-color: #1e1e1e;
@@ -19,11 +19,13 @@ body {
   overflow: hidden;
   flex-grow: 1;
   position: relative; /* For positioning autocomplete */
+  border-radius: 8px; /* Rounded corners */
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); /* Subtle shadow */
 }
 
 /* Line numbers */
 #lineNumbers {
-  font-family: monospace;
+  font-family: 'Fira Code', monospace;
   font-size: 14px;
   line-height: 1.5;
   white-space: pre;
@@ -39,7 +41,7 @@ body {
 
 /* Text area */
 #input {
-  font-family: monospace;
+  font-family: 'Fira Code', monospace;
   font-size: 14px;
   line-height: 1.5;
   border: none;
@@ -57,6 +59,7 @@ body {
 /* Error line highlighting */
 .line-error {
   background-color: rgba(255, 0, 0, 0.2);
+  border-left: 4px solid #ff0000; /* Highlight with a red border */
 }
 
 /* Controls container */
@@ -64,6 +67,7 @@ body {
   margin: 10px;
   display: flex;
   gap: 10px;
+  justify-content: center; /* Center align buttons */
 }
 
 /* Buttons */
@@ -73,12 +77,14 @@ body {
   background-color: #007acc;
   color: #ffffff;
   border: none;
-  border-radius: 3px;
+  border-radius: 5px;
   cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
 }
 
 #runBtn:hover, #undoBtn:hover, #redoBtn:hover {
   background-color: #005f99;
+  transform: scale(1.05); /* Slight zoom effect on hover */
 }
 
 #undoBtn:disabled, #redoBtn:disabled {
@@ -93,9 +99,38 @@ body {
   background: #252526;
   border: 1px solid #333;
   color: #d4d4d4;
-  font-family: monospace;
+  font-family: 'Fira Code', monospace;
   min-height: 100px;
   overflow: auto;
+  border-radius: 8px; /* Rounded corners */
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); /* Subtle shadow */
+}
+
+/* Title header */
+#title-header {
+  font-family: 'Fira Code', monospace;
+  font-size: 32px;
+  font-weight: bold;
+  color: #d4d4d4;
+  text-align: center;
+  margin: 20px 0;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  border-bottom: 2px solid #007acc; /* Add a bottom border for emphasis */
+  padding-bottom: 10px;
+}
+
+/* Section titles (Input and Output) */
+.section-title {
+  font-family: 'Fira Code', monospace;
+  font-size: 18px;
+  font-weight: bold;
+  color: #d4d4d4;
+  margin: 10px 0 5px 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-left: 4px solid #007acc; /* Add a colored border for emphasis */
+  padding-left: 10px; /* Add spacing between the text and the border */
 }
 
 /* Autocomplete suggestions */
@@ -108,8 +143,9 @@ body {
   z-index: 1000;
   display: none;
   color: #d4d4d4;
-  font-family: monospace;
+  font-family: 'Fira Code', monospace;
   font-size: 14px;
+  border-radius: 5px; /* Rounded corners */
 }
 
 .autocomplete-suggestions div {
@@ -124,26 +160,26 @@ body {
 
 /* Prism custom language token styles */
 .token.comment {
-  color: #6b7280; /* Slate gray for comments, muted and readable */
+  color: #6a9955; /* Green for comments, subtle and readable */
 }
 .token.string {
-  color: #f4a261; /* Warm peach for strings, distinct and vibrant */
+  color: #ce9178; /* Warm orange for strings, distinct and vibrant */
 }
 .token.keyword {
-  color: #c792ea; /* Soft purple for keywords, bold and standout */
+  color: #569cd6; /* Blue for keywords, bold and standout */
 }
 .token.type {
-  color: #4ec9b0; /* Teal for types, calm and distinct (retained from original) */
+  color: #4ec9b0; /* Teal for types, calm and distinct */
 }
 .token.operator {
-  color: #abb2bf; /* Light gray for operators, neutral and clear */
+  color: #dcdcaa; /* Yellowish for operators, neutral and clear */
 }
 .token.variable {
-  color: #61afef; /* Bright blue for variables, highly readable */
+  color: #9cdcfe; /* Bright cyan for variables, highly readable */
 }
 .token.number {
-  color: #98c379; /* Green for numbers, vibrant and distinct */
+  color: #b5cea8; /* Light green for numbers, vibrant and distinct */
 }
 .token.punctuation {
-  color: #5c6370; /* Darker gray for punctuation, subtle and non-distracting */
+  color: #808080; /* Gray for punctuation, subtle and non-distracting */
 }
